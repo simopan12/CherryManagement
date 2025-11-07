@@ -53,19 +53,7 @@ public class CiliegieController {
         if (selectedIndex < 0) {
             throw new NoSuchElementException();
         }
-        return selectedIndex;
-    }
-
-    @FXML
-    public void handleNewCiliegia(){
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(getClass().getResource("CiliegieEditView.fxml"));
-            DialogPane view = loader.load();
-            CiliegieEditController controller = loader.getController();
-
-            controller.setCiliegia(new Ciliegia("", 0.0 , "" ,0.0));
-
+@@ -69,53 +62,53 @@ public class CiliegieController {
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Nuova Qualità");
             dialog.initModality(Modality.WINDOW_MODAL);
@@ -92,8 +80,10 @@ public class CiliegieController {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di inserimento delle ciliegie", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il salvataggio della ciliegia", e);
         }
     }
 
@@ -119,11 +109,7 @@ public class CiliegieController {
 
             TextField qualita = (TextField)dialogPane.lookup("#qualitaField");
             qualita.setText(selectedCiliegia.getQualita());
-            TextField kgVenduti = (TextField)dialogPane.lookup("#kgVendutiField");
-            kgVenduti.setText(String.valueOf(selectedCiliegia.getKgVenduti()));
-            TextField descrizione = (TextField)dialogPane.lookup("#descrizioneField");
-            descrizione.setText(selectedCiliegia.getDescrizione());
-            TextField ricavo = (TextField)dialogPane.lookup("#ricavoField");
+@@ -127,53 +120,53 @@ public class CiliegieController {
             ricavo.setText(String.valueOf(selectedCiliegia.getRicavo()));
 
             Optional<ButtonType> clickedButton = dialog.showAndWait();
@@ -150,8 +136,10 @@ public class CiliegieController {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di modifica delle ciliegie", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante l'aggiornamento della ciliegia", e);
         }catch (NoSuchElementException e){
             showNoCiliegiaSelectedAlert();
         }
@@ -177,20 +165,3 @@ public class CiliegieController {
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             MenuApplication.getDatabase().executeUpdate("DELETE FROM Ciliegie WHERE Qualità = ?",getCiliegiaData().get(index).getQualita());
-            ciliegiaTable.getItems().remove(index);
-        }
-    }
-
-    void showNoCiliegiaSelectedAlert(){
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Nessuna selezione");
-        alert.setHeaderText("Nessuna qualità è stata selezionata");
-        alert.setContentText("Perfavore seleziona una qualità dalla tabella");
-        alert.showAndWait();
-    }
-
-    @FXML
-    private void goBack() {
-        MenuController.navigateToMenuPage();
-    }
-}

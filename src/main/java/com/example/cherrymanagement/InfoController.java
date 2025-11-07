@@ -51,6 +51,12 @@ public class InfoController {
         cognomeLabel.textProperty().set(utente.getCognomeUtente());
         nomeAziendaLabel.textProperty().set(utente.getAzienda());
         usernameLabel.textProperty().set(utente.getUsarname());
+        if (utente != null) {
+            nomeLabel.textProperty().set(utente.getNomeUtente());
+            cognomeLabel.textProperty().set(utente.getCognomeUtente());
+            nomeAziendaLabel.textProperty().set(utente.getAzienda());
+            usernameLabel.textProperty().set(utente.getUsarname());
+        }
         ricaviLabel.textProperty().set(MenuApplication.getDatabase().getCiliegieRicavi()+" €");
         costiLabel.textProperty().set((MenuApplication.getDatabase().getDipendentiStipendi() + MenuApplication.getDatabase().getCostiAmmontare())+" €");
         double differenza = MenuApplication.getDatabase().getCiliegieRicavi() - (MenuApplication.getDatabase().getDipendentiStipendi() + MenuApplication.getDatabase().getCostiAmmontare());

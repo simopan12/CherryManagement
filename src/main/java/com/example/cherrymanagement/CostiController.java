@@ -53,19 +53,7 @@ public class CostiController {
             throw new NoSuchElementException();
         }
         return selectedIndex;
-    }
-
-
-    @FXML
-    public void handleNewCosto(){
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(getClass().getResource("CostiEditView.fxml"));
-            DialogPane view = loader.load();
-            CostiEditController controller = loader.getController();
-
-            controller.setCosto(new Costo("", "" , 0.0));
-
+public class CostiController {
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Nuovo Costo");
             dialog.initModality(Modality.WINDOW_MODAL);
@@ -92,8 +80,10 @@ public class CostiController {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di inserimento dei costi", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il salvataggio del costo", e);
         }
     }
 
@@ -119,13 +109,7 @@ public class CostiController {
             Costo selectedCosto = costoTable.getItems().get(selectedIndex);
 
             TextField id = (TextField)dialogPane.lookup("#idField");
-            id.setText(selectedCosto.getId());
-            TextField tipo = (TextField)dialogPane.lookup("#tipoField");
-            tipo.setText(selectedCosto.getTipo());
-            TextField ammontare = (TextField)dialogPane.lookup("#ammontareField");
-            ammontare.setText(String.valueOf(selectedCosto.getAmmontare()));
-
-            Optional<ButtonType> clickedButton = dialog.showAndWait();
+public class CostiController {
 
             if (clickedButton.orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 if(!controller.getCosto().getId().equals("") && !controller.getCosto().getTipo().equals("")
@@ -152,8 +136,10 @@ public class CostiController {
             showNoCostoSelectedAlert();
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di modifica dei costi", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante l'aggiornamento del costo", e);
         }
     }
 
@@ -179,19 +165,3 @@ public class CostiController {
             MenuApplication.getDatabase().executeUpdate("DELETE FROM Costi WHERE ID = ?",getCostoData().get(index).getId());
             costoTable.getItems().remove(index);
         }
-    }
-
-
-    void showNoCostoSelectedAlert() {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Nessuna selezione");
-        alert.setHeaderText("Nessun costo è stato selezionato");
-        alert.setContentText("Perfavore seleziona un costo dalla tabella");
-        alert.showAndWait();
-    }
-
-    @FXML
-    private void goBack() {
-        MenuController.navigateToMenuPage();
-    }
-}

@@ -59,24 +59,7 @@ public class DipendentiController {
 
     int selectedIndex() {
         int selectedIndex = dipendenteTable.getSelectionModel().getSelectedIndex();
-        if (selectedIndex < 0) {
-            throw new NoSuchElementException();
-        }
-        return selectedIndex;
-    }
-
-    @FXML
-    public void handleNewDipendente(){
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(getClass().getResource("DipendentiEditView.fxml"));
-            DialogPane view = loader.load();
-            DipendentiEditController controller = loader.getController();
-
-            controller.setDipendente(new Dipendente("", "" , "" ,"",1,0));
-
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle("Nuovo Dipendente");
+public class DipendentiController {
             dialog.initModality(Modality.WINDOW_MODAL);
             dialog.setDialogPane(view);
 
@@ -103,8 +86,10 @@ public class DipendentiController {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di inserimento dei dipendenti", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il salvataggio del dipendente", e);
         }
     }
 
@@ -130,20 +115,7 @@ public class DipendentiController {
 
             TextField cf = (TextField)dialogPane.lookup("#cfField");
             cf.setText(selectedDipendente.getCf());
-            TextField nome = (TextField)dialogPane.lookup("#nomeField");
-            nome.setText(selectedDipendente.getNome());
-            TextField cognome = (TextField)dialogPane.lookup("#cognomeField");
-            cognome.setText(selectedDipendente.getCognome());
-            TextField mansione = (TextField)dialogPane.lookup("#mansioneField");
-            mansione.setText(selectedDipendente.getMansione());
-            TextField paga = (TextField)dialogPane.lookup("#pagaField");
-            paga.setText(String.valueOf(selectedDipendente.getPaga()));
-            Spinner ore = (Spinner)dialogPane.lookup("#oreSpinner");
-            ore.setValueFactory( new SpinnerValueFactory.DoubleSpinnerValueFactory(0,10000,selectedDipendente.getOre(),1));
-
-            Optional<ButtonType> clickedButton = dialog.showAndWait();
-
-            if (clickedButton.orElse(ButtonType.CANCEL) == ButtonType.OK) {
+public class DipendentiController {
                 if(!controller.getDipendente().getCf().equals("") && !controller.getDipendente().getNome().equals("")
                         && !controller.getDipendente().getCognome().equals("") && !controller.getDipendente().getMansione().equals("")
                         && controller.getDipendente().getPaga()>0) {
@@ -170,8 +142,10 @@ public class DipendentiController {
             showNoDipendenteSelectedAlert();
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile aprire la finestra di modifica dei dipendenti", e);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante l'aggiornamento del dipendente", e);
         }
     }
 
@@ -197,17 +171,3 @@ public class DipendentiController {
             MenuApplication.getDatabase().executeUpdate("DELETE FROM Dipendenti WHERE CF = ?",getDipendenteData().get(index).getCf());
             dipendenteTable.getItems().remove(index);
         }
-    }
-    void showNoDipendenteSelectedAlert() {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Nessuna selezione");
-        alert.setHeaderText("Nessun dipendente è stata selezionata");
-        alert.setContentText("Perfavore seleziona un dipendente dalla tabella");
-        alert.showAndWait();
-    }
-
-    @FXML
-    private void goBack() {
-        MenuController.navigateToMenuPage();
-    }
-}

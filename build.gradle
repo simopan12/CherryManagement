@@ -1,6 +1,4 @@
 plugins {
-  id 'java'
-  id 'application'
   id 'org.javamodularity.moduleplugin' version '1.8.12'
   id 'org.openjfx.javafxplugin' version '0.0.13'
   id 'org.beryx.jlink' version '2.25.0'
@@ -27,6 +25,7 @@ tasks.withType(JavaCompile) {
 application {
   mainModule = 'com.example.cherrymanagement'
   mainClass = 'com.example.cherrymanagement.HelloApplication'
+  mainClass = 'com.example.cherrymanagement.MenuApplication'
 }
 
 javafx {
@@ -39,10 +38,13 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
   implementation 'com.microsoft.sqlserver:mssql-jdbc:9.4.0.jre11'
+  implementation 'org.xerial:sqlite-jdbc:3.44.1.0'
 }
 
 test {
   useJUnitPlatform()  }
+  useJUnitPlatform()
+}
 
 jlink {
   imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")

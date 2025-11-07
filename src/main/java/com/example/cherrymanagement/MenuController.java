@@ -37,8 +37,10 @@ public class MenuController {
 
             Scene menuScene = new Scene(root);
             stage.setScene(menuScene);
+            StageManager.setScene(menuScene);
         } catch (IOException e) {
             e.printStackTrace();
+            throw new IllegalStateException("Impossibile caricare il menu", e);
         }
     }
 
@@ -57,6 +59,9 @@ public class MenuController {
             stage.setScene(scene);
         }catch (Exception e){
             System.out.println("Errore dfjkgdkjhgdgkjhdkh");
+            StageManager.setScene(scene);
+        }catch (IOException e){
+            throw new IllegalStateException("Impossibile caricare la pagina delle ciliegie", e);
         }
     }
 
@@ -76,6 +81,9 @@ public class MenuController {
             stage.setScene(scene);
         }catch (Exception e){
             System.out.println("Errore");
+            StageManager.setScene(scene);
+        }catch (IOException e){
+            throw new IllegalStateException("Impossibile caricare la pagina dei dipendenti", e);
         }
     }
 
@@ -95,6 +103,9 @@ public class MenuController {
             stage.setScene(scene);
         }catch (Exception e){
             System.out.println("Errore");
+            StageManager.setScene(scene);
+        }catch (IOException e){
+            throw new IllegalStateException("Impossibile caricare la pagina dei costi", e);
         }
     }
 
@@ -113,9 +124,13 @@ public class MenuController {
 
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            StageManager.setScene(scene);
+            InfoController infoController = fxmlLoader.getController();
             infoController.showInfo();
         }catch (Exception e){
             System.out.println("Errore in menu controller");
+        }catch (IOException e){
+            throw new IllegalStateException("Impossibile caricare la pagina informativa", e);
         }
     }
 }

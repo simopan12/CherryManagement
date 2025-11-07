@@ -8,8 +8,17 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 
-public class SignInController {
+
+public class SignUpController {
+    @FXML
+    private TextField usernameField;
+    @FXML private PasswordField passwordField;
+
+    @FXML private TextField nomeUtenteField;
+    @FXML private TextField cognomeUtenteField;
+    @FXML private TextField aziendaField;
 
     public TextField getUsernameField() {
         return usernameField;
@@ -19,38 +28,54 @@ public class SignInController {
         return passwordField;
     }
 
-    public static Stage getStage() {
-        return stage;
+    public TextField getNomeUtenteField() {
+        return nomeUtenteField;
     }
 
-    @FXML private TextField usernameField;
-    @FXML private PasswordField passwordField;
+    public TextField getCognomeUtenteField() {
+        return cognomeUtenteField;
+    }
+
+    public TextField getAziendaField() {
+        return aziendaField;
+    }
+
+
 
     private static Stage stage;
+
 
     public void setStage(Stage stage){
         this.stage=stage;
     }
 
-    @FXML public void tryNavigateToMenuPage(){
-        MenuApplication.getDatabase().SignIn(getUsernameField(),getPasswordField());
+
+    @FXML private void handleRegisterButtonAction() {
+        MenuApplication.getDatabase().SignUp(getUsernameField(),getPasswordField(),getNomeUtenteField(),getCognomeUtenteField(),getAziendaField());
+
     }
+
     @FXML
-    public void navigateToSignUpPage(){
+    public void navigateToSignInPage(){
         try{
-            FXMLLoader fxmlLoader = new FXMLLoader(MenuController.class.getResource("SignUpPage.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(MenuController.class.getResource("SignInPage.fxml"));
             Parent root = fxmlLoader.load();
 
 
-            SignUpController signUpController =fxmlLoader.getController();
-            signUpController.setStage(stage);
+            SignInController signInController =fxmlLoader.getController();
+            signInController.setStage(SignInController.getStage());
 
 
             Scene scene = new Scene(root);
-            stage.setScene(scene);
+            SignInController.getStage().setScene(scene);
         }catch (Exception e){
             System.out.println("Errore");
+            StageManager.setScene(scene);
+        }catch (IOException e){
+            throw new IllegalStateException("Impossibile caricare la schermata di accesso", e);
         }
     }
+
+
 
 }

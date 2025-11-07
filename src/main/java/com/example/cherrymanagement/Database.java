@@ -9,11 +9,16 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +39,10 @@ public class Database {
         this.username_utente = username_utente;
     }
 
+    public Database(String url) {
+        this(url, null, null);
+    }
+
     public Database(String url, String username, String password) {
         this.url = url;
         this.username = username;
@@ -41,8 +50,16 @@ public class Database {
         this.connection = null;
         connect();
     }
+
     private void checkConnection() {
         if (this.connection == null)connect();
+        try {
+            if (connection == null || connection.isClosed()) {
+                connect();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to verify database connection", e);
+        }
     }
 
     public void connect() {
@@ -54,9 +71,86 @@ public class Database {
             ex.printStackTrace();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
+            Class.forName("org.sqlite.JDBC");
+            if (username == null || username.isBlank()) {
+                connection = DriverManager.getConnection(url);
+            } else {
+                connection = DriverManager.getConnection(url, username, password);
+            }
+            enableForeignKeys();
+            initialiseSchema();
+            bootstrapDemoData();
+        } catch (SQLException | ClassNotFoundException ex) {
+            throw new IllegalStateException("Unable to connect to the database", ex);
         }
     }
 
+    private void enableForeignKeys() throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
+        }
+    }
+
+    private void initialiseSchema() throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE IF NOT EXISTS Utenti (" +
+                    "Username TEXT PRIMARY KEY," +
+                    "Password TEXT NOT NULL," +
+                    "Nome_Utente TEXT NOT NULL," +
+                    "Cognome_Utente TEXT NOT NULL," +
+                    "Azienda TEXT NOT NULL" +
+                    ")");
+
+            statement.execute("CREATE TABLE IF NOT EXISTS Ciliegie (" +
+                    "\"Qualità\" TEXT NOT NULL," +
+                    "\"Kg_Venduti\" REAL NOT NULL," +
+                    "Descrizione TEXT NOT NULL," +
+                    "Ricavo REAL NOT NULL," +
+                    "Username_utente TEXT NOT NULL," +
+                    "PRIMARY KEY (\"Qualità\", Username_utente)," +
+                    "FOREIGN KEY (Username_utente) REFERENCES Utenti(Username) ON DELETE CASCADE" +
+                    ")");
+
+            statement.execute("CREATE TABLE IF NOT EXISTS Costi (" +
+                    "ID TEXT NOT NULL," +
+                    "Tipo TEXT NOT NULL," +
+                    "Ammontare REAL NOT NULL," +
+                    "Username_utente TEXT NOT NULL," +
+                    "PRIMARY KEY (ID, Username_utente)," +
+                    "FOREIGN KEY (Username_utente) REFERENCES Utenti(Username) ON DELETE CASCADE" +
+                    ")");
+
+            statement.execute("CREATE TABLE IF NOT EXISTS Dipendenti (" +
+                    "CF TEXT NOT NULL," +
+                    "Nome TEXT NOT NULL," +
+                    "Cognome TEXT NOT NULL," +
+                    "Mansione TEXT NOT NULL," +
+                    "Paga REAL NOT NULL," +
+                    "Ore REAL NOT NULL," +
+                    "Username_utente TEXT NOT NULL," +
+                    "PRIMARY KEY (CF, Username_utente)," +
+                    "FOREIGN KEY (Username_utente) REFERENCES Utenti(Username) ON DELETE CASCADE" +
+                    ")");
+        }
+    }
+
+    private void bootstrapDemoData() throws SQLException {
+        try (ResultSet resultSet = executeQuery("SELECT 1 FROM Utenti WHERE Username = ?", "demo")) {
+            if (resultSet.next()) {
+                return;
+            }
+        }
+
+        executeUpdate("INSERT INTO Utenti (Username, Password, Nome_Utente, Cognome_Utente, Azienda) VALUES (?, ?, ?, ?, ?)",
+                "demo", "demo", "Mario", "Rossi", "Cherry Farm");
+
+        executeUpdate("INSERT INTO Ciliegie (\"Qualità\", \"Kg_Venduti\", Descrizione, Ricavo, Username_utente) VALUES (?, ?, ?, ?, ?)",
+                "Duroni", 150.0, "Raccolta principale", 1200.0, "demo");
+        executeUpdate("INSERT INTO Costi (ID, Tipo, Ammontare, Username_utente) VALUES (?, ?, ?, ?)",
+                "C-001", "Imballaggi", 250.0, "demo");
+        executeUpdate("INSERT INTO Dipendenti (CF, Nome, Cognome, Mansione, Paga, Ore, Username_utente) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "RSSMRA90A01H501U", "Lucia", "Bianchi", "Raccolta", 12.5, 120.0, "demo");
+    }
 
     public void disconnect() throws SQLException {
         if (connection != null && !connection.isClosed()) {
@@ -68,6 +162,7 @@ public class Database {
     public ResultSet executeQuery(String query, Object... parameters) throws SQLException {
         checkConnection();
         PreparedStatement statement = connection.prepareStatement(query);
+        statement.closeOnCompletion();
         setParameters(statement, parameters);
         return statement.executeQuery();
     }
@@ -77,6 +172,10 @@ public class Database {
         PreparedStatement statement = connection.prepareStatement(query);
         setParameters(statement, parameters);
         return statement.executeUpdate();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            setParameters(statement, parameters);
+            return statement.executeUpdate();
+        }
     }
 
     private void setParameters(PreparedStatement statement, Object... parameters) throws SQLException {
@@ -93,10 +192,23 @@ public class Database {
         String nomeUtente = nomeUtenteField.getText();
         String cognomeUtente = cognomeUtenteField.getText();
         String azienda = aziendaField.getText();
+    public void SignUp(TextField usernameField, TextField passwordField, TextField nomeUtenteField,
+                       TextField cognomeUtenteField, TextField aziendaField) {
+        String username = usernameField.getText().trim();
+        String password = passwordField.getText().trim();
+        String nomeUtente = nomeUtenteField.getText().trim();
+        String cognomeUtente = cognomeUtenteField.getText().trim();
+        String azienda = aziendaField.getText().trim();
+
+        if (username.isEmpty() || password.isEmpty() || nomeUtente.isEmpty() || cognomeUtente.isEmpty() || azienda.isEmpty()) {
+            showRegistrationError("Compila tutti i campi prima di procedere.");
+            return;
+        }
 
         // Effettua la connessione al database
         try{
             // Verifica se l'utente esiste già
+        try {
             if (checkUserExists(username)) {
                 showRegistrationError("L'utente esiste già.");
                 return;
@@ -105,6 +217,7 @@ public class Database {
             // Esegui l'inserimento dell'utente nel database
             String query = "INSERT INTO Utenti (Username, Password, Nome_Utente, Cognome_Utente, Azienda) VALUES (?, ?, ?, ?, ?)";
             executeUpdate(query,username,password,nomeUtente,cognomeUtente,azienda);
+            executeUpdate(query, username, password, nomeUtente, cognomeUtente, azienda);
 
             // Registrazione riuscita
             showRegistrationSuccess();
@@ -124,7 +237,11 @@ public class Database {
             String query = "SELECT * FROM Utenti WHERE Username = ? AND password = ?";
 
             ResultSet resultSet = executeQuery(query,username,password);
+    public void SignIn(TextField usernameField, PasswordField passwordField) {
+        String username = usernameField.getText().trim();
+        String password = passwordField.getText().trim();
 
+        try (ResultSet resultSet = executeQuery("SELECT 1 FROM Utenti WHERE Username = ? AND Password = ?", username, password)) {
             if (resultSet.next()) {
                 setUsername_utente(username);
                 // Login riuscito
@@ -153,6 +270,9 @@ public class Database {
         String query = "SELECT * FROM Utenti WHERE Username = ?";
         ResultSet resultSet = executeQuery(query,username);
         return resultSet.next();
+        try (ResultSet resultSet = executeQuery("SELECT 1 FROM Utenti WHERE Username = ?", username)) {
+            return resultSet.next();
+        }
     }
 
 
@@ -167,6 +287,8 @@ public class Database {
 
     public void navigateToSignInPage(){
         try{
+    public void navigateToSignInPage() {
+        try {
             FXMLLoader fxmlLoader = new FXMLLoader(MenuController.class.getResource("SignInPage.fxml"));
             Parent root = fxmlLoader.load();
 
@@ -179,6 +301,9 @@ public class Database {
             SignInController.getStage().setScene(scene);
         }catch (Exception e){
             System.out.println("Errore");
+            StageManager.setScene(scene);
+        } catch (IOException e) {
+            throw new IllegalStateException("Impossibile caricare la schermata di login", e);
         }
     }
 
@@ -198,6 +323,9 @@ public class Database {
             final String query = "SELECT * FROM Ciliegie JOIN Utenti ON Ciliegie.Username_utente = Utenti.Username WHERE Ciliegie.Username_utente = ?";
 
             ResultSet resultSet = executeQuery(query,uuid);
+        try (ResultSet resultSet = executeQuery(
+                "SELECT * FROM Ciliegie JOIN Utenti ON Ciliegie.Username_utente = Utenti.Username WHERE Ciliegie.Username_utente = ?",
+                uuid)) {
 
             Ciliegia ciliegia = null;
             List<Ciliegia> ciliegie = new ArrayList<>();
@@ -210,12 +338,19 @@ public class Database {
                             resultSet.getDouble("Ricavo"));
                     ciliegie.add(ciliegia);
                 } while (resultSet.next());
+            while (resultSet.next()) {
+                Ciliegia ciliegia = new Ciliegia(resultSet.getString("Qualità"),
+                        resultSet.getDouble("Kg_Venduti"),
+                        resultSet.getString("Descrizione"),
+                        resultSet.getDouble("Ricavo"));
+                ciliegie.add(ciliegia);
             }
 
             resultSet.close();
             return FXCollections.observableList(ciliegie);
         } catch (SQLException ex) {
             ex.printStackTrace();
+            throw new IllegalStateException("Errore durante il recupero delle ciliegie", ex);
         }
         return null;
     }
@@ -225,6 +360,9 @@ public class Database {
         checkConnection();
         try {
             final String query = "SELECT * FROM Costi JOIN Utenti ON Costi.Username_utente = Utenti.Username WHERE Costi.Username_utente = ?";
+        try (ResultSet resultSet = executeQuery(
+                "SELECT * FROM Costi JOIN Utenti ON Costi.Username_utente = Utenti.Username WHERE Costi.Username_utente = ?",
+                uuid)) {
 
             ResultSet resultSet = executeQuery(query,uuid);
 
@@ -238,12 +376,18 @@ public class Database {
                             resultSet.getDouble("Ammontare"));
                     costi.add(costo);
                 } while (resultSet.next());
+            while (resultSet.next()) {
+                Costo costo = new Costo(resultSet.getString("ID"),
+                        resultSet.getString("Tipo"),
+                        resultSet.getDouble("Ammontare"));
+                costi.add(costo);
             }
 
             resultSet.close();
             return FXCollections.observableList(costi);
         } catch (SQLException ex) {
             ex.printStackTrace();
+            throw new IllegalStateException("Errore durante il recupero dei costi", ex);
         }
         return null;
     }
@@ -254,6 +398,9 @@ public class Database {
             final String query = "SELECT * FROM Dipendenti JOIN Utenti ON Dipendenti.Username_utente = Utenti.Username WHERE Dipendenti.Username_utente = ?";
 
             ResultSet resultSet = executeQuery(query,uuid);
+        try (ResultSet resultSet = executeQuery(
+                "SELECT * FROM Dipendenti JOIN Utenti ON Dipendenti.Username_utente = Utenti.Username WHERE Dipendenti.Username_utente = ?",
+                uuid)) {
 
             Dipendente dipendente = null;
             List<Dipendente> dipendenti = new ArrayList<>();
@@ -268,12 +415,21 @@ public class Database {
                             resultSet.getDouble("Ore"));
                     dipendenti.add(dipendente);
                 } while (resultSet.next());
+            while (resultSet.next()) {
+                Dipendente dipendente = new Dipendente(resultSet.getString("CF"),
+                        resultSet.getString("Nome"),
+                        resultSet.getString("Cognome"),
+                        resultSet.getString("Mansione"),
+                        resultSet.getDouble("Paga"),
+                        resultSet.getDouble("Ore"));
+                dipendenti.add(dipendente);
             }
 
             resultSet.close();
             return FXCollections.observableList(dipendenti);
         } catch (SQLException ex) {
             ex.printStackTrace();
+            throw new IllegalStateException("Errore durante il recupero dei dipendenti", ex);
         }
         return null;
     }
@@ -286,8 +442,10 @@ public class Database {
 
             Utente utente =null;
 
+        try (ResultSet resultSet = executeQuery("SELECT * FROM Utenti WHERE Utenti.Username=?", username_utente)) {
             if(resultSet.next()){
                 utente = new Utente(resultSet.getString("Username"),
+                return new Utente(resultSet.getString("Username"),
                         resultSet.getString("Password"),
                         resultSet.getString("Nome_Utente"),
                         resultSet.getString("Cognome_Utente"),
@@ -295,8 +453,10 @@ public class Database {
             }
             resultSet.close();
             return utente;
+            return null;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il recupero delle informazioni utente", e);
         }
     }
 
@@ -307,6 +467,7 @@ public class Database {
             ResultSet resultSet =executeQuery(query,username_utente);
 
             Ciliegia ciliegia=null;
+        try (ResultSet resultSet = executeQuery("SELECT * FROM Ciliegie WHERE Ciliegie.Username_utente = ?", username_utente)) {
             ObservableList<Ciliegia> pieChartData = FXCollections.observableArrayList();
             if(resultSet.next()){
                 do {
@@ -316,12 +477,19 @@ public class Database {
                             resultSet.getDouble("Ricavo"));
                     pieChartData.add(ciliegia);
                 }while (resultSet.next());
+            while(resultSet.next()){
+                Ciliegia ciliegia = new Ciliegia(resultSet.getString("Qualità"),
+                        resultSet.getDouble("Kg_Venduti"),
+                        resultSet.getString("Descrizione"),
+                        resultSet.getDouble("Ricavo"));
+                pieChartData.add(ciliegia);
             }
             resultSet.close();
             return pieChartData;
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il recupero dei dati per il grafico delle ciliegie", e);
         }
     }
 
@@ -332,15 +500,19 @@ public class Database {
             ResultSet resultSet = executeQuery(query,username_utente);
 
             String nomeAzienda = null;
+        try (ResultSet resultSet = executeQuery("SELECT Utenti.Azienda FROM Utenti WHERE Utenti.Username = ?", username_utente)) {
             if(resultSet.next()){
                 nomeAzienda = resultSet.getString("Azienda");
+                return resultSet.getString("Azienda");
             }
 
             resultSet.close();
             return nomeAzienda;
+            return "";
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il recupero del nome dell'azienda", e);
         }
     }
 
@@ -351,9 +523,11 @@ public class Database {
             ResultSet resultSet =executeQuery(query,username_utente);
 
             Dipendente dipendente=null;
+        try (ResultSet resultSet = executeQuery("SELECT * FROM Dipendenti WHERE Dipendenti.Username_utente = ?", username_utente)) {
             ObservableList<Dipendente> pieChartData = FXCollections.observableArrayList();
             while(resultSet.next()){
                 dipendente = new Dipendente(resultSet.getString("CF"),
+                Dipendente dipendente = new Dipendente(resultSet.getString("CF"),
                         resultSet.getString("Nome"),
                         resultSet.getString("Cognome"),
                         resultSet.getString("Mansione"),
@@ -366,6 +540,7 @@ public class Database {
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
+            throw new IllegalStateException("Errore durante il recupero dei dati per il grafico dei dipendenti", e);
         }
     }
 
@@ -391,24 +566,4 @@ public class Database {
         ObservableList<Costo> costi = getCosti(username_utente);
         double ammontare = 0;
 
-        for(Costo costo : costi){
-            ammontare += costo.getAmmontare();
-        }
 
-        return ammontare;
-    }
-
-    public void showConfirmationAlertUtente() throws SQLException {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Conferma");
-        alert.setHeaderText("Sei sicuro di voler eliminare il tuo account?");
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            executeUpdate("DELETE FROM Ciliegie WHERE Username_utente = ?",username_utente);
-            executeUpdate("DELETE FROM Costi WHERE Username_utente = ?",username_utente);
-            executeUpdate("DELETE FROM Dipendenti WHERE Username_utente = ?",username_utente);
-            executeUpdate("DELETE FROM Utenti WHERE Username = ?",username_utente);
-            navigateToSignInPage();
-        }
-    }
-}
